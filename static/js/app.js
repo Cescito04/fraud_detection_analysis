@@ -36,13 +36,36 @@ function initializeApp() {
 }
 
 function initScrollEffects() {
-    // Navbar scroll effect
+    // Navbar scroll effect with performance optimization
+    let ticking = false;
+    
     window.addEventListener('scroll', function() {
-        const navbar = document.getElementById('mainNavbar');
-        if (window.scrollY > 50) {
-            navbar.classList.add('scrolled');
-        } else {
-            navbar.classList.remove('scrolled');
+        if (!ticking) {
+            window.requestAnimationFrame(function() {
+                const navbar = document.getElementById('mainNavbar');
+                const scrollToTopBtn = document.getElementById('scrollToTop');
+                const scrollY = window.scrollY;
+                
+                if (scrollY > 50) {
+                    navbar.classList.add('scrolled');
+                } else {
+                    navbar.classList.remove('scrolled');
+                }
+                
+                // Show/hide scroll to top button
+                if (scrollY > 300) {
+                    scrollToTopBtn.style.display = 'flex';
+                } else {
+                    scrollToTopBtn.style.display = 'none';
+                }
+                
+                // Update active nav link based on scroll position
+                updateActiveNavLink();
+                
+                ticking = false;
+            });
+            
+            ticking = true;
         }
     });
     
@@ -52,14 +75,45 @@ function initScrollEffects() {
             e.preventDefault();
             const target = document.querySelector(this.getAttribute('href'));
             if (target) {
-                const offsetTop = target.offsetTop - 80;
+                const offsetTop = target.offsetTop - 90;
                 window.scrollTo({
                     top: offsetTop,
                     behavior: 'smooth'
                 });
+                
+                // Update active nav
+                updateActiveNavOnClick(this);
             }
         });
     });
+    
+    // Update active nav link based on scroll position
+    function updateActiveNavLink() {
+        const sections = document.querySelectorAll('section[id]');
+        const scrollPos = window.scrollY + 120;
+        
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.offsetHeight;
+            const sectionId = section.getAttribute('id');
+            
+            if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === `#${sectionId}`) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+    }
+    
+    function updateActiveNavOnClick(clickedLink) {
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+        });
+        clickedLink.classList.add('active');
+    }
 }
 
 function initParticles() {
@@ -552,8 +606,19 @@ function loadFraudExample() {
 function scrollToSection(sectionId) {
     const section = document.getElementById(sectionId);
     if (section) {
-        section.scrollIntoView({ behavior: 'smooth' });
+        const offsetTop = section.offsetTop - 90;
+        window.scrollTo({
+            top: offsetTop,
+            behavior: 'smooth'
+        });
     }
+}
+
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
 }
 
 async function checkAPIStatus() {
@@ -607,3 +672,4 @@ window.resetForm = resetForm;
 window.scrollToSection = scrollToSection;
 window.viewTransactionDetails = viewTransactionDetails;
 window.closeLoadingModal = closeLoadingModal;
+window.scrollToTop = scrollToTop;

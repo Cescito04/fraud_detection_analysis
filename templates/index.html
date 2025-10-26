@@ -18,11 +18,12 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top" id="mainNavbar">
         <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="#">
+            <a class="navbar-brand d-flex align-items-center" href="#home">
                 <div class="logo-icon">
                     <i class="bi bi-shield-check-fill"></i>
                 </div>
                 <span class="ms-2">FraudGuard AI</span>
+                <span class="badge badge-nav ms-2">v1.0</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -30,16 +31,24 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#home">Accueil</a>
+                        <a class="nav-link active" href="#home">
+                            <i class="bi bi-house-door"></i> Accueil
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#predict">Analyse</a>
+                        <a class="nav-link" href="#predict">
+                            <i class="bi bi-search"></i> Analyse
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#history">Historique</a>
+                        <a class="nav-link" href="#history">
+                            <i class="bi bi-clock-history"></i> Historique
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#about">À propos</a>
+                        <a class="nav-link" href="#about">
+                            <i class="bi bi-info-circle"></i> À propos
+                        </a>
                     </li>
                 </ul>
             </div>
@@ -394,6 +403,11 @@
             </div>
         </div>
     </footer>
+
+    <!-- Scroll to Top Button -->
+    <button class="scroll-to-top" id="scrollToTop" onclick="scrollToTop()" style="display: none;">
+        <i class="bi bi-arrow-up"></i>
+    </button>
 
     <!-- Loading Modal -->
     <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
