@@ -27,6 +27,58 @@ function initializeApp() {
     
     // Check API status
     checkAPIStatus();
+    
+    // Initialize scroll effects
+    initScrollEffects();
+    
+    // Initialize particles
+    initParticles();
+}
+
+function initScrollEffects() {
+    // Navbar scroll effect
+    window.addEventListener('scroll', function() {
+        const navbar = document.getElementById('mainNavbar');
+        if (window.scrollY > 50) {
+            navbar.classList.add('scrolled');
+        } else {
+            navbar.classList.remove('scrolled');
+        }
+    });
+    
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                const offsetTop = target.offsetTop - 80;
+                window.scrollTo({
+                    top: offsetTop,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    });
+}
+
+function initParticles() {
+    // Simple particle animation
+    const particlesContainer = document.getElementById('particles');
+    if (particlesContainer) {
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.style.position = 'absolute';
+            particle.style.width = '2px';
+            particle.style.height = '2px';
+            particle.style.background = 'rgba(255, 255, 255, 0.5)';
+            particle.style.borderRadius = '50%';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = Math.random() * 100 + '%';
+            particle.style.animation = `float ${3 + Math.random() * 4}s ease-in-out infinite`;
+            particlesContainer.appendChild(particle);
+        }
+    }
 }
 
 function setDefaultValues() {
