@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏦 Système de Détection de Fraude Bancaire</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link href="static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-shield-check"></i>
+                Détection de Fraude Bancaire
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#home">Accueil</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#predict">Prédiction</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#history">Historique</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">À propos</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+        <div class="container">
+            <div class="row align-items-center min-vh-100">
+                <div class="col-lg-6">
+                    <h1 class="display-4 fw-bold text-white mb-4">
+                        <i class="bi bi-shield-check text-warning"></i>
+                        Détection Intelligente de Fraude
+                    </h1>
+                    <p class="lead text-white-50 mb-4">
+                        Système d'IA avancé pour identifier automatiquement les transactions frauduleuses 
+                        et protéger votre institution financière.
+                    </p>
+                    <div class="d-flex gap-3">
+                        <button class="btn btn-warning btn-lg" onclick="scrollToSection('predict')">
+                            <i class="bi bi-play-circle"></i> Tester Maintenant
+                        </button>
+                        <button class="btn btn-outline-light btn-lg" onclick="scrollToSection('about')">
+                            <i class="bi bi-info-circle"></i> En Savoir Plus
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="hero-stats">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="stat-card">
+                                    <h3 class="text-warning">92.7%</h3>
+                                    <p class="text-white-50">Précision</p>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-card">
+                                    <h3 class="text-success">96.4%</h3>
+                                    <p class="text-white-50">Détection</p>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-card">
+                                    <h3 class="text-info">&lt;100ms</h3>
+                                    <p class="text-white-50">Temps</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Prediction Section -->
+    <section id="predict" class="py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <div class="text-center mb-5">
+                        <h2 class="display-5 fw-bold">🔍 Analyse de Transaction</h2>
+                        <p class="lead text-muted">Saisissez les détails de la transaction pour analyser le risque de fraude</p>
+                    </div>
+
+                    <!-- Prediction Form -->
+                    <div class="card shadow-lg">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0"><i class="bi bi-credit-card"></i> Détails de la Transaction</h4>
+                        </div>
+                        <div class="card-body">
+                            <form id="predictionForm">
+                                <!-- Informations de base -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary mb-3"><i class="bi bi-person"></i> Informations Client</h5>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Genre</label>
+                                        <select class="form-select" id="gender" required>
+                                            <option value="">Sélectionner...</option>
+                                            <option value="0">Femme</option>
+                                            <option value="1" selected>Homme</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Âge</label>
+                                        <input type="number" class="form-control" id="age" min="18" max="100" value="37" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Type de Logement</label>
+                                        <select class="form-select" id="houseType" required>
+                                            <option value="">Sélectionner...</option>
+                                            <option value="0" selected>Autre</option>
+                                            <option value="1">Maison</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Contact Disponible</label>
+                                        <select class="form-select" id="contactAvailable" required>
+                                            <option value="">Sélectionner...</option>
+                                            <option value="0">Non</option>
+                                            <option value="1" selected>Oui</option>
+                                            <option value="2">Partiellement</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Informations bancaires -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary mb-3"><i class="bi bi-bank"></i> Informations Bancaires</h5>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Numéro de Compte</label>
+                                        <input type="number" class="form-control" id="accountNo" value="12345" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Date d'Expiration Carte (YYYYMM)</label>
+                                        <input type="number" class="form-control" id="cardExpiry" value="202512" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">CIF</label>
+                                        <input type="number" class="form-control" id="cif" value="67890" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Pays d'Origine</label>
+                                        <select class="form-select" id="homeCountry" required>
+                                            <option value="">Sélectionner...</option>
+                                            <option value="1" selected>France</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Détails de la transaction -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary mb-3"><i class="bi bi-currency-exchange"></i> Détails de la Transaction</h5>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Montant (€)</label>
+                                        <input type="number" class="form-control" id="amount" step="0.01" min="0" value="0.00" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Pays de Transaction</label>
+                                        <select class="form-select" id="transactionCountry" required>
+                                            <option value="">Sélectionner...</option>
+                                            <option value="1" selected>France</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Code Devise</label>
+                                        <select class="form-select" id="currencyCode" required>
+                                            <option value="">Sélectionner...</option>
+                                            <option value="1" selected>EUR</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Type d'Achat</label>
+                                        <select class="form-select" id="largePurchase" required>
+                                            <option value="">Sélectionner...</option>
+                                            <option value="0" selected>Achat Normal</option>
+                                            <option value="1">Gros Achat</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">ID Produit</label>
+                                        <select class="form-select" id="productId" required>
+                                            <option value="">Sélectionner...</option>
+                                            <option value="1">Standard</option>
+                                            <option value="2">Moyen</option>
+                                            <option value="3" selected>Premium</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- Buttons -->
+                                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                    <button type="button" class="btn btn-outline-warning me-md-2" onclick="loadFraudExample()">
+                                        <i class="bi bi-exclamation-triangle"></i> Exemple Fraude
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary me-md-2" onclick="resetForm()">
+                                        <i class="bi bi-arrow-clockwise"></i> Réinitialiser
+                                    </button>
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="bi bi-search"></i> Analyser la Transaction
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Results Section -->
+                    <div id="resultsSection" class="card shadow-lg mt-4" style="display: none;">
+                        <div class="card-header" id="resultHeader">
+                            <h4 class="mb-0"><i class="bi bi-graph-up"></i> Résultats de l'Analyse</h4>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="result-summary">
+                                        <h5>Résumé</h5>
+                                        <div class="alert" id="summaryAlert">
+                                            <strong id="predictionText"></strong>
+                                        </div>
+                                        <p><strong>Probabilité de fraude :</strong> <span id="fraudProbability"></span></p>
+                                        <p><strong>Confiance :</strong> <span id="confidence"></span></p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="progress-container">
+                                        <h5>Niveau de Risque</h5>
+                                        <div class="progress mb-3" style="height: 25px;">
+                                            <div class="progress-bar" id="riskBar" role="progressbar"></div>
+                                        </div>
+                                        <div class="risk-indicator">
+                                            <span id="riskLevel"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <h5>Recommandations</h5>
+                                <div id="recommendations"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- History Section -->
+    <section id="history" class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">📊 Historique des Analyses</h2>
+                <p class="lead text-muted">Consultez l'historique des transactions analysées</p>
+            </div>
+            
+            <div class="card shadow">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="historyTable">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Montant</th>
+                                    <th>Pays</th>
+                                    <th>Prédiction</th>
+                                    <th>Risque</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody">
+                                <!-- History items will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-8 mx-auto text-center">
+                    <h2 class="display-5 fw-bold mb-4">🤖 À Propos du Système</h2>
+                    <p class="lead mb-4">
+                        Notre système de détection de fraude utilise des algorithmes de machine learning avancés 
+                        pour analyser les transactions bancaires en temps réel.
+                    </p>
+                    
+                    <div class="row mt-5">
+                        <div class="col-md-4 mb-4">
+                            <div class="feature-card">
+                                <i class="bi bi-shield-check text-primary fs-1"></i>
+                                <h4>Haute Précision</h4>
+                                <p>92.7% de précision dans la détection de fraude</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="feature-card">
+                                <i class="bi bi-lightning text-warning fs-1"></i>
+                                <h4>Temps Réel</h4>
+                                <p>Analyse en moins de 100ms par transaction</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-4">
+                            <div class="feature-card">
+                                <i class="bi bi-graph-up text-success fs-1"></i>
+                                <h4>Apprentissage Continu</h4>
+                                <p>Le modèle s'améliore avec chaque nouvelle donnée</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="bi bi-shield-check"></i> Système de Détection de Fraude</h5>
+                    <p class="mb-0">Protégez votre institution financière avec l'IA</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0">&copy; 2025 - Tous droits réservés</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-4">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Chargement...</span>
+                    </div>
+                    <h5>Analyse en cours...</h5>
+                    <p class="text-muted">Veuillez patienter pendant que nous analysons la transaction</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="static/js/app.js"></script>
+</body>
+</html>

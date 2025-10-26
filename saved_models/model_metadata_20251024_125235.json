@@ -1,0 +1,29 @@
+{
+  "model_name": "For\u00eat Al\u00e9atoire",
+  "model_type": "RandomForestClassifier",
+  "f1_score": 0.9267643142476698,
+  "accuracy": 0.9226441631504922,
+  "cv_mean": 0.9210333782258946,
+  "cv_std": 0.011828590246744652,
+  "training_date": "2025-10-24T12:52:35.772498",
+  "dataset_shape": [
+    1659,
+    13
+  ],
+  "features": [
+    "Gender",
+    "Age",
+    "HouseTypeID",
+    "ContactAvaliabilityID",
+    "HomeCountry",
+    "AccountNo",
+    "CardExpiryDate",
+    "TransactionAmount",
+    "TransactionCountry",
+    "LargePurchase",
+    "ProductID",
+    "CIF",
+    "TransactionCurrencyCode"
+  ],
+  "target_column": "PotentialFraud"
+}
