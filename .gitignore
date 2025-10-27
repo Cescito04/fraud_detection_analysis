@@ -329,3 +329,4 @@ coverage/
 !deploy.sh
 !templates/
 !static/
+
