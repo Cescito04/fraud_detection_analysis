@@ -159,17 +159,23 @@ if __name__ == '__main__':
     
     # Charger le modèle au démarrage
     if load_model():
-        print(" Modèle chargé avec succès")
-        print(" API disponible sur: http://localhost:8080")
-        print(" Endpoints:")
-        print("   GET  /           - Informations sur l'API")
+        print(" ✅ Modèle chargé avec succès")
+        
+        # Récupérer le port depuis l'environnement (pour déploiement public)
+        port = int(os.environ.get('PORT', 8080))
+        host = os.environ.get('HOST', '0.0.0.0')
+        
+        print(f" 🌐 API disponible sur: http://{host}:{port}")
+        print(" 📋 Endpoints:")
+        print("   GET  /           - Interface web")
+        print("   GET  /api        - Informations sur l'API")
         print("   GET  /health     - Vérification de santé")
         print("   GET  /model-info - Informations du modèle")
         print("   POST /predict    - Prédiction de fraude")
         
         # Démarrer l'API
-        app.run(host='0.0.0.0', port=8080, debug=False)
+        app.run(host=host, port=port, debug=False)
     else:
-        print(" Impossible de charger le modèle")
+        print(" ❌ Impossible de charger le modèle")
         print("Vérifiez que le dossier 'saved_models' contient des modèles valides")
 
