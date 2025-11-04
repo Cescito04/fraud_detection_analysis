@@ -1,7 +1,8 @@
 // JavaScript for Fraud Detection System
 
 // Configuration
-const API_BASE_URL = 'http://localhost:8080';
+// Détecter automatiquement l'URL de base (local ou production)
+const API_BASE_URL = window.location.origin;
 let transactionHistory = JSON.parse(localStorage.getItem('transactionHistory')) || [];
 
 // DOM Elements
