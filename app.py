@@ -24,24 +24,43 @@ def load_model():
     global model, model_info
     
     try:
+        # Utiliser le chemin absolu basé sur le répertoire du script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        model_dir = os.path.join(script_dir, "saved_models")
+        
+        # Vérifier que le dossier existe
+        if not os.path.exists(model_dir):
+            raise FileNotFoundError(f"Dossier 'saved_models' introuvable dans: {script_dir}")
+        
+        print(f"  Recherche dans: {model_dir}")
+        
+        # Lister tous les fichiers dans le dossier
+        all_files = os.listdir(model_dir)
+        print(f"  Fichiers trouvés: {len(all_files)}")
+        
         # Trouver le modèle le plus récent
-        model_dir = "saved_models"
-        model_files = [f for f in os.listdir(model_dir) 
+        model_files = [f for f in all_files 
                       if f.startswith("best_model_") and f.endswith(".joblib")]
         
         if not model_files:
+            print(f"   Aucun fichier .joblib trouvé dans {model_dir}")
+            print(f" 📂 Fichiers présents: {', '.join(all_files[:10])}")
             raise FileNotFoundError("Aucun modèle trouvé")
+        
+        print(f" {len(model_files)} modèle(s) trouvé(s)")
         
         # Prendre le plus récent
         latest_model = sorted(model_files)[-1]
         model_path = os.path.join(model_dir, latest_model)
         
+        print(f"  Chargement du modèle: {latest_model}")
+        
         # Charger le modèle
         model = joblib.load(model_path)
-        print(f" Modèle chargé: {latest_model}")
+        print(f" ✅ Modèle chargé avec succès: {latest_model}")
         
         # Charger les métadonnées si disponibles
-        metadata_files = [f for f in os.listdir(model_dir) 
+        metadata_files = [f for f in all_files 
                          if f.startswith("model_metadata_") and f.endswith(".json")]
         if metadata_files:
             latest_metadata = sorted(metadata_files)[-1]
@@ -49,12 +68,16 @@ def load_model():
             
             with open(metadata_path, 'r') as f:
                 model_info = json.load(f)
-            print(f" Métadonnées chargées: {latest_metadata}")
+            print(f" ✅ Métadonnées chargées: {latest_metadata}")
+        else:
+            print(f" ⚠️  Aucune métadonnée trouvée")
         
         return True
         
     except Exception as e:
-        print(f" Erreur chargement modèle: {e}")
+        print(f" ❌ Erreur chargement modèle: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 @app.route('/', methods=['GET'])
@@ -165,8 +188,8 @@ if __name__ == '__main__':
         port = int(os.environ.get('PORT', 8080))
         host = os.environ.get('HOST', '0.0.0.0')
         
-        print(f" 🌐 API disponible sur: http://{host}:{port}")
-        print(" 📋 Endpoints:")
+        print(f"  API disponible sur: http://{host}:{port}")
+        print("  Endpoints:")
         print("   GET  /           - Interface web")
         print("   GET  /api        - Informations sur l'API")
         print("   GET  /health     - Vérification de santé")
@@ -176,6 +199,6 @@ if __name__ == '__main__':
         # Démarrer l'API
         app.run(host=host, port=port, debug=False)
     else:
-        print(" ❌ Impossible de charger le modèle")
+        print("  Impossible de charger le modèle")
         print("Vérifiez que le dossier 'saved_models' contient des modèles valides")
 
