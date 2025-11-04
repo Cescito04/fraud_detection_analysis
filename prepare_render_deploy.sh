@@ -17,7 +17,7 @@ MODEL_COUNT=$(find saved_models -name "*.joblib" 2>/dev/null | wc -l | tr -d ' '
 METADATA_COUNT=$(find saved_models -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
 HELPER_COUNT=$(find saved_models -name "*.py" 2>/dev/null | wc -l | tr -d ' ')
 
-echo "📊 Fichiers trouvés:"
+echo " Fichiers trouvés:"
 echo "   - Modèles (.joblib): $MODEL_COUNT"
 echo "   - Métadonnées (.json): $METADATA_COUNT"
 echo "   - Helpers (.py): $HELPER_COUNT"
