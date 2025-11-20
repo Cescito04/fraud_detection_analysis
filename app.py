@@ -10,7 +10,11 @@ import pandas as pd
 import numpy as np
 import json
 import os
+import threading
+import time
 from datetime import datetime
+from werkzeug.utils import secure_filename
+import io
 
 # Initialisation de l'application Flask
 app = Flask(__name__)
@@ -18,12 +22,17 @@ app = Flask(__name__)
 # Variables globales
 model = None
 model_info = None
+model_loading = False
+model_load_error = None
 
 def load_model():
     """Charger le meilleur modèle sauvegardé"""
-    global model, model_info
+    global model, model_info, model_loading, model_load_error
     
     try:
+        model_loading = True
+        model_load_error = None
+        
         # Utiliser le chemin absolu basé sur le répertoire du script
         script_dir = os.path.dirname(os.path.abspath(__file__))
         model_dir = os.path.join(script_dir, "saved_models")
@@ -54,10 +63,21 @@ def load_model():
         model_path = os.path.join(model_dir, latest_model)
         
         print(f"  Chargement du modèle: {latest_model}")
+        print(f"  ⏳ Veuillez patienter, chargement en cours...")
+        print(f"  💡 Le chargement peut prendre 10-30 secondes selon votre système")
         
-        # Charger le modèle
-        model = joblib.load(model_path)
-        print(f" ✅ Modèle chargé avec succès: {latest_model}")
+        # Charger le modèle avec optimisation
+        start_time = time.time()
+        
+        # Utiliser mmap_mode='r' pour un chargement plus rapide en lecture seule
+        try:
+            model = joblib.load(model_path, mmap_mode='r')
+        except (ValueError, TypeError):
+            # Si mmap_mode n'est pas supporté, charger normalement
+            model = joblib.load(model_path)
+        
+        load_time = time.time() - start_time
+        print(f" ✅ Modèle chargé avec succès: {latest_model} (en {load_time:.2f}s)")
         
         # Charger les métadonnées si disponibles
         metadata_files = [f for f in all_files 
@@ -72,9 +92,12 @@ def load_model():
         else:
             print(f" ⚠️  Aucune métadonnée trouvée")
         
+        model_loading = False
         return True
         
     except Exception as e:
+        model_loading = False
+        model_load_error = str(e)
         print(f" ❌ Erreur chargement modèle: {e}")
         import traceback
         traceback.print_exc()
@@ -88,16 +111,30 @@ def home():
 @app.route('/api', methods=['GET'])
 def api_info():
     """Informations sur l'API"""
+    if model is not None:
+        model_status = "loaded"
+    elif model_loading:
+        model_status = "loading"
+    elif model_load_error:
+        model_status = "error"
+    else:
+        model_status = "not_loaded"
+    
     return jsonify({
         "message": "API de Détection de Fraude Bancaire",
         "version": "1.0.0",
         "status": "active",
+        "model_status": model_status,
         "model_loaded": model is not None,
+        "model_loading": model_loading,
+        "model_error": model_load_error if model_load_error else None,
         "endpoints": {
             "/": "Interface web",
             "/api": "Informations sur l'API",
             "/health": "Vérification de santé",
-            "/predict": "Prédiction de fraude (POST)"
+            "/model-info": "Informations du modèle",
+            "/predict": "Prédiction de fraude (POST)",
+            "/predict-batch": "Prédiction en lot depuis fichier (POST - CSV/JSON/Excel)"
         },
         "timestamp": datetime.now().isoformat()
     })
@@ -105,9 +142,20 @@ def api_info():
 @app.route('/health', methods=['GET'])
 def health():
     """Vérification de santé du service"""
+    if model is not None:
+        status = "healthy"
+    elif model_loading:
+        status = "loading"
+    elif model_load_error:
+        status = "error"
+    else:
+        status = "unhealthy"
+    
     return jsonify({
-        "status": "healthy" if model is not None else "unhealthy",
+        "status": status,
         "model_loaded": model is not None,
+        "model_loading": model_loading,
+        "error": model_load_error if model_load_error else None,
         "timestamp": datetime.now().isoformat()
     })
 
@@ -116,7 +164,19 @@ def predict():
     """Prédiction de fraude"""
     try:
         if model is None:
-            return jsonify({"error": "Modèle non chargé"}), 500
+            if model_loading:
+                return jsonify({
+                    "error": "Modèle en cours de chargement",
+                    "message": "Veuillez patienter quelques secondes et réessayer",
+                    "status": "loading"
+                }), 503  # Service Unavailable
+            elif model_load_error:
+                return jsonify({
+                    "error": "Erreur lors du chargement du modèle",
+                    "details": model_load_error
+                }), 500
+            else:
+                return jsonify({"error": "Modèle non chargé"}), 500
         
         # Récupérer les données
         data = request.get_json()
@@ -177,28 +237,164 @@ def model_info_endpoint():
     else:
         return jsonify({"error": "Informations du modèle non disponibles"}), 404
 
+@app.route('/predict-batch', methods=['POST'])
+def predict_batch():
+    """Prédiction de fraude en lot depuis un fichier (CSV, JSON, Excel)"""
+    try:
+        if model is None:
+            if model_loading:
+                return jsonify({
+                    "error": "Modèle en cours de chargement",
+                    "message": "Veuillez patienter quelques secondes et réessayer",
+                    "status": "loading"
+                }), 503
+            elif model_load_error:
+                return jsonify({
+                    "error": "Erreur lors du chargement du modèle",
+                    "details": model_load_error
+                }), 500
+            else:
+                return jsonify({"error": "Modèle non chargé"}), 500
+        
+        # Vérifier qu'un fichier a été envoyé
+        if 'file' not in request.files:
+            return jsonify({"error": "Aucun fichier fourni"}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "Aucun fichier sélectionné"}), 400
+        
+        # Lire le fichier selon son extension
+        filename = secure_filename(file.filename)
+        file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+        
+        try:
+            if file_ext == 'csv':
+                df = pd.read_csv(file)
+            elif file_ext == 'json':
+                df = pd.read_json(file)
+            elif file_ext in ['xlsx', 'xls']:
+                df = pd.read_excel(file)
+            else:
+                return jsonify({
+                    "error": f"Format de fichier non supporté: {file_ext}",
+                    "formats_supportes": ["csv", "json", "xlsx", "xls"]
+                }), 400
+        except Exception as e:
+            return jsonify({
+                "error": f"Erreur lors de la lecture du fichier: {str(e)}"
+            }), 400
+        
+        if df.empty:
+            return jsonify({"error": "Le fichier est vide"}), 400
+        
+        # Vérifier que les colonnes requises sont présentes
+        required_columns = [
+            'Gender', 'Age', 'HouseTypeID', 'ContactAvaliabilityID', 
+            'HomeCountry', 'AccountNo', 'CardExpiryDate', 'TransactionAmount',
+            'TransactionCountry', 'LargePurchase', 'ProductID', 'CIF', 
+            'TransactionCurrencyCode'
+        ]
+        
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            return jsonify({
+                "error": f"Colonnes manquantes: {', '.join(missing_columns)}",
+                "colonnes_requises": required_columns,
+                "colonnes_trouvees": list(df.columns)
+            }), 400
+        
+        # Sélectionner uniquement les colonnes requises dans le bon ordre
+        df = df[required_columns]
+        
+        # Faire les prédictions
+        predictions = model.predict(df)
+        
+        # Obtenir les probabilités si disponibles
+        probabilities = None
+        if hasattr(model, 'predict_proba'):
+            probabilities = model.predict_proba(df).tolist()
+        
+        # Préparer la réponse
+        results = []
+        for i, pred in enumerate(predictions):
+            result = {
+                "transaction_id": i,
+                "prediction": int(pred),
+                "prediction_label": "fraud" if pred == 1 else "no_fraud",
+                "timestamp": datetime.now().isoformat(),
+                "transaction_data": df.iloc[i].to_dict()
+            }
+            
+            if probabilities:
+                result["confidence"] = {
+                    "no_fraud": float(probabilities[i][0]),
+                    "fraud": float(probabilities[i][1])
+                }
+            
+            results.append(result)
+        
+        # Statistiques
+        fraud_count = sum(1 for r in results if r["prediction"] == 1)
+        total_count = len(results)
+        
+        return jsonify({
+            "predictions": results,
+            "statistics": {
+                "total": total_count,
+                "fraud": fraud_count,
+                "legitimate": total_count - fraud_count,
+                "fraud_rate": round(fraud_count / total_count * 100, 2) if total_count > 0 else 0
+            },
+            "model_info": {
+                "name": model_info.get('model_name', 'Unknown') if model_info else 'Unknown',
+                "f1_score": model_info.get('f1_score', 0) if model_info else 0
+            },
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Erreur lors de la prédiction en lot: {str(e)}"}), 500
+
+def load_model_async():
+    """Charger le modèle de manière asynchrone dans un thread séparé"""
+    def load():
+        load_model()
+    
+    thread = threading.Thread(target=load, daemon=True)
+    thread.start()
+    return thread
+
 if __name__ == '__main__':
     print("🚀 Démarrage de l'API de Détection de Fraude...")
+    print("")
+    print("  ⚡ Démarrage rapide activé")
+    print("  📦 Le modèle se charge en arrière-plan...")
+    print("  🌐 L'API est disponible immédiatement")
+    print("")
     
-    # Charger le modèle au démarrage
-    if load_model():
-        print(" ✅ Modèle chargé avec succès")
-        
-        # Récupérer le port depuis l'environnement (pour déploiement public)
-        port = int(os.environ.get('PORT', 8080))
-        host = os.environ.get('HOST', '0.0.0.0')
-        
-        print(f"  API disponible sur: http://{host}:{port}")
-        print("  Endpoints:")
-        print("   GET  /           - Interface web")
-        print("   GET  /api        - Informations sur l'API")
-        print("   GET  /health     - Vérification de santé")
-        print("   GET  /model-info - Informations du modèle")
-        print("   POST /predict    - Prédiction de fraude")
-        
-        # Démarrer l'API
-        app.run(host=host, port=port, debug=False)
-    else:
-        print("  Impossible de charger le modèle")
-        print("Vérifiez que le dossier 'saved_models' contient des modèles valides")
+    # Démarrer le chargement du modèle en arrière-plan
+    load_thread = load_model_async()
+    
+    # Récupérer le port depuis l'environnement (pour déploiement public)
+    port = int(os.environ.get('PORT', 8080))
+    host = os.environ.get('HOST', '0.0.0.0')
+    
+    print(f"  ✅ API disponible sur: http://{host}:{port}")
+    print("  Endpoints:")
+    print("   GET  /             - Interface web")
+    print("   GET  /api          - Informations sur l'API")
+    print("   GET  /health       - Vérification de santé (affiche l'état du modèle)")
+    print("   GET  /model-info  - Informations du modèle")
+    print("   POST /predict      - Prédiction de fraude (transaction unique)")
+    print("   POST /predict-batch - Prédiction en lot (CSV/JSON/Excel)")
+    print("")
+    print("  💡 Note: Les prédictions seront disponibles une fois le modèle chargé")
+    print("  📊 Vérifiez /health pour connaître l'état du chargement")
+    print("")
+    
+    # Démarrer l'API immédiatement
+    app.run(host=host, port=port, debug=False)
 
