@@ -33,6 +33,16 @@
                 <li><a href="#predict" class="nav-link">ANALYSE</a></li>
                 <li><a href="#history" class="nav-link">HISTORIQUE</a></li>
                 <li><a href="#about" class="nav-link">INFO</a></li>
+                {% if user_name %}
+                <li class="nav-user">
+                    <span class="user-name">{{ user_name }}</span>
+                    <a href="{{ url_for('logout') }}" class="nav-link logout-btn">
+                        <i class="bi bi-box-arrow-right"></i> DÉCONNEXION
+                    </a>
+                </li>
+                {% else %}
+                <li><a href="{{ url_for('login') }}" class="nav-link">CONNEXION</a></li>
+                {% endif %}
             </ul>
         </div>
         <div class="nav-accent-line"></div>

@@ -240,6 +240,31 @@ body::after {
     font-weight: 700;
 }
 
+.nav-user {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-left: var(--spacing-md);
+    padding-left: var(--spacing-md);
+    border-left: 1px solid rgba(255, 0, 110, 0.2);
+}
+
+.user-name {
+    font-family: 'Inter', sans-serif;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.logout-btn {
+    color: var(--color-danger) !important;
+}
+
+.logout-btn:hover {
+    background: rgba(251, 86, 7, 0.1) !important;
+    color: var(--color-danger) !important;
+}
+
 .nav-toggle {
     display: none;
     flex-direction: column;
