@@ -36,6 +36,9 @@ app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@fraudguard.ai')
 app.config['MAIL_DEFAULT_SENDER_NAME'] = 'FraudGuard AI'
+# Configuration pour les timeouts et la connexion
+app.config['MAIL_TIMEOUT'] = 30  # Timeout de 30 secondes
+app.config['MAIL_SUPPRESS_SEND'] = False
 
 # Initialiser Flask-Mail (sera None si non configuré)
 mail = None
@@ -396,9 +399,16 @@ def forgot_password():
                     </html>
                     '''
                 )
+                # Envoi avec timeout explicite
+                socket.setdefaulttimeout(30)  # Timeout de 30 secondes
                 mail.send(msg)
                 print(f"  ✅ Email de réinitialisation envoyé à {email}")
                 flash('Un lien de réinitialisation a été envoyé à votre adresse email.', 'success')
+            except socket.timeout:
+                error_msg = "Timeout de connexion SMTP. Le serveur n'a pas répondu dans les 30 secondes."
+                print(f"  ❌ Timeout SMTP pour {email}")
+                flash('Erreur: Timeout de connexion au serveur email. Veuillez réessayer plus tard.', 'danger')
+                flash(f'Lien de réinitialisation (mode développement): {reset_url}', 'info')
             except Exception as e:
                 # En cas d'erreur d'envoi, afficher le lien pour le développement
                 error_msg = str(e)
