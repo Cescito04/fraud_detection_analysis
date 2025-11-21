@@ -5,20 +5,49 @@
 const API_BASE_URL = window.location.origin;
 let transactionHistory = JSON.parse(localStorage.getItem('transactionHistory')) || [];
 
-// DOM Elements
-const predictionForm = document.getElementById('predictionForm');
-const resultsSection = document.getElementById('resultsSection');
-const historyBody = document.getElementById('historyBody');
-const loadingModalElement = document.getElementById('loadingModal');
-const navToggle = document.getElementById('navToggle');
-const navMenu = document.getElementById('navMenu');
+// DOM Elements - Will be initialized after DOM is loaded
+let predictionForm;
+let resultsSection;
+let historyBody;
+let loadingModalElement;
+let navToggle;
+let navMenu;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 DOM chargé, initialisation de l\'application...');
     initializeApp();
 });
 
 function initializeApp() {
+    // Initialize DOM elements
+    predictionForm = document.getElementById('predictionForm');
+    resultsSection = document.getElementById('resultsSection');
+    historyBody = document.getElementById('historyBody');
+    loadingModalElement = document.getElementById('loadingModal');
+    navToggle = document.getElementById('navToggle');
+    navMenu = document.getElementById('navMenu');
+    
+    // Check if essential elements exist
+    if (!predictionForm) {
+        console.error('❌ predictionForm non trouvé ! Vérifiez que le formulaire existe dans le HTML.');
+        return;
+    }
+    
+    if (!resultsSection) {
+        console.error('❌ resultsSection non trouvé !');
+    }
+    
+    if (!historyBody) {
+        console.error('❌ historyBody non trouvé !');
+    }
+    
+    console.log('✅ Éléments DOM initialisés');
+    console.log('   - predictionForm:', !!predictionForm);
+    console.log('   - resultsSection:', !!resultsSection);
+    console.log('   - historyBody:', !!historyBody);
+    console.log('   - loadingModalElement:', !!loadingModalElement);
+    
     // Set default values
     setDefaultValues();
     
@@ -45,6 +74,8 @@ function initializeApp() {
     
     // Initialize interactive elements
     initInteractiveElements();
+    
+    console.log('✅ Application initialisée avec succès');
 }
 
 function initMobileMenu() {
@@ -84,10 +115,10 @@ function initScrollEffects() {
                 
                 // Show/hide scroll to top button
                 if (scrollToTopBtn) {
-                    if (scrollY > 300) {
-                        scrollToTopBtn.style.display = 'flex';
-                    } else {
-                        scrollToTopBtn.style.display = 'none';
+                if (scrollY > 300) {
+                    scrollToTopBtn.style.display = 'flex';
+                } else {
+                    scrollToTopBtn.style.display = 'none';
                     }
                 }
                 
@@ -211,6 +242,12 @@ function setDefaultValues() {
 }
 
 function addFormEventListeners() {
+    if (!predictionForm) {
+        console.error('❌ predictionForm non disponible pour ajouter les event listeners');
+        return;
+    }
+    
+    console.log('✅ Ajout des event listeners au formulaire');
     predictionForm.addEventListener('submit', handleFormSubmit);
     
     // Add real-time validation
@@ -273,6 +310,13 @@ function clearFieldError(event) {
 
 async function handleFormSubmit(event) {
     event.preventDefault();
+    console.log('📤 Soumission du formulaire de prédiction...');
+    
+    if (!predictionForm) {
+        console.error('❌ predictionForm non disponible');
+        showNotification('Erreur: formulaire non trouvé', 'error');
+        return;
+    }
     
     // Validate all fields
     const isValid = validateForm();
@@ -432,6 +476,7 @@ async function analyzeTransaction(transactionData, retryCount = 0) {
     }
     
     const response = await fetch(`${API_BASE_URL}/predict`, {
+        credentials: 'include',  // Inclure les cookies de session
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -471,7 +516,7 @@ function displayResults(result, transactionData) {
     const predictionText = document.getElementById('predictionText');
     if (predictionText) {
         predictionText.textContent = 
-            prediction.prediction_label === 'fraud' ? '🚨 TRANSACTION SUSPECTE' : '✅ TRANSACTION LÉGITIME';
+        prediction.prediction_label === 'fraud' ? '🚨 TRANSACTION SUSPECTE' : '✅ TRANSACTION LÉGITIME';
         predictionText.style.color = prediction.prediction_label === 'fraud' ? 'var(--color-danger)' : 'var(--color-success)';
     }
     
@@ -489,8 +534,8 @@ function displayResults(result, transactionData) {
     // Update risk bar with animation
     const riskBar = document.getElementById('riskBar');
     if (riskBar) {
-        const riskPercentage = fraudProbability * 100;
-        riskBar.style.width = '0%';
+    const riskPercentage = fraudProbability * 100;
+    riskBar.style.width = '0%';
         
         // Set color based on risk
         if (fraudProbability > 0.5) {
@@ -500,18 +545,18 @@ function displayResults(result, transactionData) {
         } else {
             riskBar.style.background = 'var(--color-success)';
         }
-        
-        // Animate progress bar
-        setTimeout(() => {
-            riskBar.style.transition = 'width 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
-            riskBar.style.width = `${riskPercentage}%`;
-        }, 100);
+    
+    // Animate progress bar
+    setTimeout(() => {
+        riskBar.style.transition = 'width 1.5s cubic-bezier(0.4, 0, 0.2, 1)';
+        riskBar.style.width = `${riskPercentage}%`;
+    }, 100);
     }
     
     // Update risk level
     const riskLevel = document.getElementById('riskLevel');
     if (riskLevel) {
-        riskLevel.textContent = getRiskText(fraudProbability);
+    riskLevel.textContent = getRiskText(fraudProbability);
         
         // Set styling based on risk
         if (fraudProbability > 0.5) {
@@ -531,16 +576,16 @@ function displayResults(result, transactionData) {
     
     // Show results section with animation
     if (resultsSection) {
-        resultsSection.style.display = 'block';
-        resultsSection.style.opacity = '0';
-        resultsSection.style.transform = 'translateY(30px)';
-        
-        setTimeout(() => {
-            resultsSection.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-            resultsSection.style.opacity = '1';
-            resultsSection.style.transform = 'translateY(0)';
-            resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }, 100);
+    resultsSection.style.display = 'block';
+    resultsSection.style.opacity = '0';
+    resultsSection.style.transform = 'translateY(30px)';
+    
+    setTimeout(() => {
+        resultsSection.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+        resultsSection.style.opacity = '1';
+        resultsSection.style.transform = 'translateY(0)';
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
     }
     
     // Add confetti effect for low risk
@@ -758,58 +803,83 @@ function getCountryName(countryCode) {
 
 function viewTransactionDetails(transactionId) {
     const transaction = transactionHistory.find(item => item.id === transactionId);
-    if (transaction) {
-        // Create modal for transaction details
-        const modalHtml = `
-            <div class="modal fade" id="transactionModal" tabindex="-1">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Détails de la Transaction</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    if (!transaction) {
+        console.error('Transaction non trouvée:', transactionId);
+        showNotification('Transaction non trouvée', 'error');
+        return;
+    }
+    
+    // Create minimalist and compact modal
+    const isFraud = transaction.prediction === 'fraud';
+    const riskPercent = (transaction.risk * 100).toFixed(1);
+    
+    const modalHtml = `
+        <div class="modal-custom" id="transactionModal" style="display: flex;">
+            <div class="modal-content-minimal" style="background: rgba(26, 31, 53, 0.95) !important; color: #FFFFFF !important; border: 3px solid #FF006E !important;">
+                <div class="modal-header-minimal" style="background: rgba(10, 14, 39, 0.5) !important; border-bottom: 2px solid #FF006E !important;">
+                    <h2 style="color: #FF006E !important; font-family: 'JetBrains Mono', monospace !important; text-transform: uppercase !important;">Détails Transaction</h2>
+                    <button type="button" class="btn-close-minimal" onclick="closeTransactionModal()" style="border: 2px solid #FF006E !important; color: #FF006E !important;">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                
+                <div class="modal-body-minimal" style="background: rgba(10, 14, 39, 0.3) !important; color: #FFFFFF !important;">
+                    <div class="result-minimal ${isFraud ? 'fraud' : 'legitimate'}" style="border: 3px solid ${isFraud ? '#FB5607' : '#06FFA5'} !important; background: rgba(10, 14, 39, 0.5) !important; color: ${isFraud ? '#FB5607' : '#06FFA5'} !important;">
+                        <span class="result-icon-minimal">${isFraud ? '🚨' : '✅'}</span>
+                        <div>
+                            <div class="result-text-minimal" style="color: ${isFraud ? '#FB5607' : '#06FFA5'} !important;">${isFraud ? 'FRAUDE' : 'LÉGITIME'}</div>
+                            <div class="result-percent-minimal" style="color: rgba(255, 255, 255, 0.7) !important;">${riskPercent}%</div>
                         </div>
-                        <div class="modal-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <h6>Informations Client</h6>
-                                    <p><strong>Genre:</strong> ${transaction.data.Gender === 1 ? 'Homme' : 'Femme'}</p>
-                                    <p><strong>Âge:</strong> ${transaction.data.Age} ans</p>
-                                    <p><strong>Type de logement:</strong> ${getHouseTypeName(transaction.data.HouseTypeID)}</p>
-                                </div>
-                                <div class="col-md-6">
-                                    <h6>Détails Transaction</h6>
-                                    <p><strong>Montant:</strong> ${transaction.data.TransactionAmount}€</p>
-                                    <p><strong>Pays:</strong> ${getCountryName(transaction.data.TransactionCountry)}</p>
-                                    <p><strong>Gros achat:</strong> ${transaction.data.LargePurchase === 1 ? 'Oui' : 'Non'}</p>
-                                </div>
-                            </div>
-                            <div class="mt-3">
-                                <h6>Résultat de l'Analyse</h6>
-                                <p><strong>Prédiction:</strong> 
-                                    <span style="padding: 0.5rem 1rem; border-radius: 0; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; border: 2px solid ${transaction.prediction === 'fraud' ? 'var(--color-danger)' : 'var(--color-success)'}; color: ${transaction.prediction === 'fraud' ? 'var(--color-danger)' : 'var(--color-success)'}; background: ${transaction.prediction === 'fraud' ? 'rgba(251, 86, 7, 0.1)' : 'rgba(6, 255, 165, 0.1)'};">
-                                        ${transaction.prediction === 'fraud' ? '🚨 Fraude' : '✅ Légitime'}
-                                    </span>
-                                </p>
-                                <p><strong>Probabilité de fraude:</strong> ${(transaction.risk * 100).toFixed(1)}%</p>
-                            </div>
+                    </div>
+                    
+                    <div class="info-minimal">
+                        <div class="info-line" style="background: rgba(10, 14, 39, 0.4) !important; border: 2px solid rgba(255, 0, 110, 0.2) !important; color: #FFFFFF !important;">
+                            <span class="info-label-minimal" style="color: rgba(255, 255, 255, 0.6) !important;">Montant</span>
+                            <span class="info-value-minimal" style="color: #FFFFFF !important;">${transaction.data.TransactionAmount.toFixed(2)}€</span>
+                        </div>
+                        <div class="info-line" style="background: rgba(10, 14, 39, 0.4) !important; border: 2px solid rgba(255, 0, 110, 0.2) !important; color: #FFFFFF !important;">
+                            <span class="info-label-minimal" style="color: rgba(255, 255, 255, 0.6) !important;">Pays</span>
+                            <span class="info-value-minimal" style="color: #FFFFFF !important;">${getCountryName(transaction.data.TransactionCountry)}</span>
+                        </div>
+                        <div class="info-line" style="background: rgba(10, 14, 39, 0.4) !important; border: 2px solid rgba(255, 0, 110, 0.2) !important; color: #FFFFFF !important;">
+                            <span class="info-label-minimal" style="color: rgba(255, 255, 255, 0.6) !important;">Client</span>
+                            <span class="info-value-minimal" style="color: #FFFFFF !important;">${transaction.data.Gender === 1 ? 'Homme' : 'Femme'}, ${transaction.data.Age} ans</span>
                         </div>
                     </div>
                 </div>
+                
+                <div class="modal-footer-minimal" style="background: rgba(10, 14, 39, 0.5) !important; border-top: 2px solid #FF006E !important;">
+                    <button type="button" class="btn-close-minimal-footer" onclick="closeTransactionModal()" style="background: #FF006E !important; color: #FFFFFF !important; border: 3px solid #FF006E !important;">Fermer</button>
+                </div>
             </div>
-        `;
-        
-        // Remove existing modal if any
-        const existingModal = document.getElementById('transactionModal');
-        if (existingModal) {
-            existingModal.remove();
-        }
-        
-        // Add modal to DOM
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('transactionModal'));
-        modal.show();
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('transactionModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Close on background click
+    const modal = document.getElementById('transactionModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeTransactionModal();
+            }
+        });
+    }
+}
+
+function closeTransactionModal() {
+    const modal = document.getElementById('transactionModal');
+    if (modal) {
+        modal.style.display = 'none';
+        setTimeout(() => modal.remove(), 300);
     }
 }
 
@@ -820,6 +890,25 @@ function getHouseTypeName(houseTypeId) {
         3: 'Villa'
     };
     return types[houseTypeId] || 'Inconnu';
+}
+
+function getCurrencyName(currencyCode) {
+    const currencies = {
+        1: 'EUR',
+        2: 'USD',
+        3: 'GBP',
+        4: 'Autre'
+    };
+    return currencies[currencyCode] || 'Inconnu';
+}
+
+function getProductName(productId) {
+    const products = {
+        1: 'Standard',
+        2: 'Moyen',
+        3: 'Premium'
+    };
+    return products[productId] || 'Inconnu';
 }
 
 function resetForm() {
@@ -984,26 +1073,110 @@ function closeLoadingModal() {
 let batchResults = null;
 
 function initializeUploadForm() {
+    console.log('🔧 Initialisation du formulaire d\'upload...');
     const uploadForm = document.getElementById('uploadForm');
     if (uploadForm) {
+        console.log('✅ Formulaire uploadForm trouvé');
         uploadForm.addEventListener('submit', handleFileUpload);
+        console.log('✅ Event listener attaché au formulaire');
+    } else {
+        console.error('❌ Formulaire uploadForm non trouvé !');
+    }
+    
+    // Vérifier aussi le fileInput
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        console.log('✅ Input file trouvé');
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                console.log(`📄 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+                displayFileInfo(file);
+            }
+        });
+    } else {
+        console.error('❌ Input file non trouvé !');
+    }
+}
+
+function displayFileInfo(file) {
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const fileLabelText = document.getElementById('fileLabelText');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const fileInput = document.getElementById('fileInput');
+    
+    if (fileInfo && fileName && fileSize && fileLabelText && analyzeBtn) {
+        // Afficher les informations du fichier
+        fileName.textContent = file.name;
+        const sizeKB = (file.size / 1024).toFixed(2);
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        fileSize.textContent = file.size > 1024 * 1024 ? `${sizeMB} MB` : `${sizeKB} KB`;
+        
+        // Masquer le label et afficher les infos
+        fileLabelText.style.display = 'none';
+        fileInfo.style.display = 'flex';
+        
+        // Activer le bouton d'analyse
+        analyzeBtn.disabled = false;
+        
+        // Ajouter une classe pour le style
+        if (fileInput) {
+            fileInput.closest('.file-input-wrapper')?.classList.add('file-selected');
+        }
+    }
+}
+
+function clearFileSelection() {
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileLabelText = document.getElementById('fileLabelText');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    
+    if (fileInput) {
+        fileInput.value = '';
+        fileInput.closest('.file-input-wrapper')?.classList.remove('file-selected');
+    }
+    
+    if (fileInfo) {
+        fileInfo.style.display = 'none';
+    }
+    
+    if (fileLabelText) {
+        fileLabelText.style.display = 'inline';
+    }
+    
+    if (analyzeBtn) {
+        analyzeBtn.disabled = true;
     }
 }
 
 async function handleFileUpload(event) {
     event.preventDefault();
+    console.log('📤 Début de l\'upload de fichier...');
     
     const fileInput = document.getElementById('fileInput');
+    if (!fileInput) {
+        console.error('❌ fileInput non trouvé');
+        showNotification('Erreur: champ de fichier non trouvé', 'error');
+        return;
+    }
+    
     const file = fileInput.files[0];
     
     if (!file) {
+        console.warn('⚠️ Aucun fichier sélectionné');
         showNotification('Veuillez sélectionner un fichier', 'error');
         return;
     }
     
+    console.log(`📄 Fichier sélectionné: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+    
     // Vérifier le format du fichier
     const fileExt = file.name.split('.').pop().toLowerCase();
     if (!['csv', 'json', 'xlsx', 'xls'].includes(fileExt)) {
+        console.error(`❌ Format non supporté: ${fileExt}`);
         showNotification('Format de fichier non supporté. Utilisez CSV, JSON ou Excel.', 'error');
         return;
     }
@@ -1016,24 +1189,48 @@ async function handleFileUpload(event) {
     try {
         const formData = new FormData();
         formData.append('file', file);
+        console.log('📦 FormData créé, envoi de la requête...');
         
         const response = await fetch(`${API_BASE_URL}/predict-batch`, {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'include'  // Inclure les cookies de session
         });
         
+        console.log(`📥 Réponse reçue: ${response.status} ${response.statusText}`);
+        
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Erreur lors de l\'analyse');
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                errorData = { error: `Erreur HTTP ${response.status}: ${response.statusText}` };
+            }
+            console.error('❌ Erreur serveur:', errorData);
+            throw new Error(errorData.error || errorData.message || 'Erreur lors de l\'analyse');
         }
         
         const result = await response.json();
+        console.log('✅ Résultat reçu:', result);
         batchResults = result;
         displayBatchResults(result);
-        showNotification(`Analyse terminée: ${result.statistics.total} transaction(s) analysée(s)`, 'success');
+        
+        // Afficher un message de succès avec plus de détails
+        const fraudCount = result.statistics.fraud || 0;
+        const noFraudCount = result.statistics.no_fraud || 0;
+        showNotification(
+            `✅ Analyse terminée: ${result.statistics.total} transaction(s) - ${fraudCount} fraude(s) détectée(s)`, 
+            'success'
+        );
+        
+        // Scroll vers les résultats
+        const batchResultsSection = document.getElementById('batchResultsSection');
+        if (batchResultsSection) {
+            batchResultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
         
     } catch (error) {
-        console.error('Error uploading file:', error);
+        console.error('❌ Erreur lors de l\'upload:', error);
         showNotification('Erreur lors de l\'analyse: ' + error.message, 'error');
     } finally {
         setTimeout(() => {
@@ -1298,6 +1495,7 @@ window.resetForm = resetForm;
 window.scrollToSection = scrollToSection;
 window.viewTransactionDetails = viewTransactionDetails;
 window.closeLoadingModal = closeLoadingModal;
+window.closeTransactionModal = closeTransactionModal;
 window.scrollToTop = scrollToTop;
 window.viewBatchTransactionDetails = viewBatchTransactionDetails;
 window.downloadTemplate = downloadTemplate;

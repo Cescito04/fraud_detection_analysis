@@ -271,14 +271,22 @@
                         <input type="file" id="fileInput" accept=".csv,.json,.xlsx,.xls" required>
                         <label for="fileInput" class="file-label">
                             <i class="bi bi-cloud-upload"></i>
-                            <span>SÉLECTIONNER UN FICHIER</span>
+                            <span id="fileLabelText">SÉLECTIONNER UN FICHIER</span>
                         </label>
+                        <div id="fileInfo" class="file-info" style="display: none;">
+                            <i class="bi bi-file-earmark-check"></i>
+                            <span id="fileName"></span>
+                            <span id="fileSize"></span>
+                            <button type="button" class="file-remove-btn" onclick="clearFileSelection()" title="Changer de fichier">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="upload-actions">
                         <button type="button" class="btn-action-secondary" onclick="downloadTemplate()">
                             TÉLÉCHARGER MODÈLE
                         </button>
-                        <button type="submit" class="btn-action-primary">
+                        <button type="submit" class="btn-action-primary" id="analyzeBtn" disabled>
                             <span>ANALYSER FICHIER</span>
                         </button>
                     </div>

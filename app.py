@@ -5,6 +5,7 @@ Version optimisée et simplifiée
 """
 
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash
+from werkzeug.exceptions import RequestEntityTooLarge
 from flask_mail import Mail, Message
 from dotenv import load_dotenv
 import joblib
@@ -28,6 +29,8 @@ load_dotenv()
 # Initialisation de l'application Flask
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+# Limite de taille pour les uploads de fichiers (16 MB)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
 # Configuration pour l'envoi d'emails
 # Option 1: API REST Brevo (recommandé pour production, plus fiable)
@@ -194,9 +197,22 @@ def is_authenticated():
 def require_auth(f):
     """Décorateur pour protéger les routes"""
     def decorated_function(*args, **kwargs):
+        print(f"🔐 Vérification authentification pour {request.path}")
+        print(f"   Session: {dict(session)}")
+        print(f"   Authentifié: {is_authenticated()}")
+        
         if not is_authenticated():
+            print("❌ Non authentifié, redirection vers login")
+            # Si c'est une requête AJAX/API, retourner une réponse JSON
+            if request.is_json or request.path.startswith('/predict'):
+                return jsonify({
+                    "error": "Authentification requise",
+                    "message": "Vous devez être connecté pour accéder à cette ressource"
+                }), 401
+            # Sinon, rediriger vers la page de login
             flash('Vous devez être connecté pour accéder à cette page', 'info')
             return redirect(url_for('login'))
+        print("✅ Authentification OK")
         return f(*args, **kwargs)
     decorated_function.__name__ = f.__name__
     return decorated_function
@@ -699,6 +715,11 @@ def model_info_endpoint():
 @require_auth
 def predict_batch():
     """Prédiction de fraude en lot depuis un fichier (CSV, JSON, Excel)"""
+    print(f"📥 Requête POST /predict-batch reçue")
+    print(f"   Content-Type: {request.content_type}")
+    print(f"   Files dans request: {list(request.files.keys())}")
+    print(f"   Form data: {list(request.form.keys())}")
+    
     try:
         if model is None:
             if model_loading:
@@ -717,10 +738,14 @@ def predict_batch():
         
         # Vérifier qu'un fichier a été envoyé
         if 'file' not in request.files:
+            print("❌ Aucun fichier 'file' dans request.files")
             return jsonify({"error": "Aucun fichier fourni"}), 400
         
         file = request.files['file']
+        print(f"📄 Fichier reçu: {file.filename}")
+        
         if file.filename == '':
+            print("❌ Nom de fichier vide")
             return jsonify({"error": "Aucun fichier sélectionné"}), 400
         
         # Lire le fichier selon son extension
@@ -825,6 +850,17 @@ def load_model_async():
     thread = threading.Thread(target=load, daemon=True)
     thread.start()
     return thread
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(e):
+    """Gérer les erreurs de fichier trop volumineux"""
+    if request.path.startswith('/predict'):
+        return jsonify({
+            "error": "Fichier trop volumineux",
+            "message": "La taille maximale autorisée est de 16 MB"
+        }), 413
+    flash('Le fichier est trop volumineux. Taille maximale: 16 MB', 'danger')
+    return redirect(request.url), 413
 
 if __name__ == '__main__':
     print("🚀 Démarrage de l'API de Détection de Fraude...")
