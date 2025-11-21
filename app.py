@@ -15,6 +15,7 @@ import os
 import socket
 import threading
 import time
+import requests
 from datetime import datetime
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -28,7 +29,13 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
-# Configuration Flask-Mail pour l'envoi d'emails
+# Configuration pour l'envoi d'emails
+# Option 1: API REST Brevo (recommandé pour production, plus fiable)
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
+BREVO_SENDER_EMAIL = os.environ.get('BREVO_SENDER_EMAIL', 'bocoumabdoulaye988@gmail.com')
+BREVO_SENDER_NAME = os.environ.get('BREVO_SENDER_NAME', 'FraudGuard AI')
+
+# Option 2: SMTP (fallback si API non disponible)
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
@@ -37,8 +44,7 @@ app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@fraudguard.ai')
 app.config['MAIL_DEFAULT_SENDER_NAME'] = 'FraudGuard AI'
-# Configuration pour les timeouts et la connexion
-app.config['MAIL_TIMEOUT'] = 30  # Timeout de 30 secondes
+app.config['MAIL_TIMEOUT'] = 30
 app.config['MAIL_SUPPRESS_SEND'] = False
 
 # Initialiser Flask-Mail (sera None si non configuré)
@@ -46,15 +52,18 @@ mail = None
 if app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD']:
     try:
         mail = Mail(app)
-        print("  ✅ Flask-Mail configuré et prêt")
+        print("  ✅ Flask-Mail configuré (SMTP)")
         print(f"     Serveur: {app.config['MAIL_SERVER']}:{app.config['MAIL_PORT']}")
-        print(f"     Sender: {app.config['MAIL_DEFAULT_SENDER']}")
     except Exception as e:
         print(f"  ⚠️  Erreur configuration Flask-Mail: {e}")
-        print("  💡 L'envoi d'email sera désactivé. Configurez les variables d'environnement pour l'activer.")
+
+# Vérifier la configuration Brevo API
+if BREVO_API_KEY:
+    print("  ✅ Brevo API configurée (recommandé pour production)")
 else:
-    print("  ⚠️  Flask-Mail non configuré (variables MAIL_USERNAME/MAIL_PASSWORD manquantes)")
-    print("  💡 Mode développement: les liens seront affichés dans les messages flash")
+    print("  ⚠️  Brevo API non configurée (BREVO_API_KEY manquant)")
+    if not mail:
+        print("  💡 Mode développement: les liens seront affichés dans les messages flash")
 
 # Variables globales
 model = None
@@ -99,6 +108,57 @@ def save_reset_tokens(tokens):
 def generate_reset_token():
     """Générer un token unique pour la réinitialisation"""
     return secrets.token_urlsafe(32)
+
+def send_email_brevo_api(to_email, subject, html_content):
+    """
+    Envoyer un email via l'API REST Brevo (plus fiable que SMTP sur Render)
+    
+    Args:
+        to_email: Adresse email du destinataire
+        subject: Sujet de l'email
+        html_content: Contenu HTML de l'email
+    
+    Returns:
+        tuple: (success: bool, message: str)
+    """
+    if not BREVO_API_KEY:
+        return False, "BREVO_API_KEY non configurée"
+    
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json"
+    }
+    
+    payload = {
+        "sender": {
+            "name": BREVO_SENDER_NAME,
+            "email": BREVO_SENDER_EMAIL
+        },
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": html_content
+    }
+    
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if response.status_code == 201:
+            return True, "Email envoyé avec succès"
+        else:
+            error_msg = f"Erreur Brevo API: {response.status_code} - {response.text}"
+            print(f"  ❌ {error_msg}")
+            return False, error_msg
+    except requests.exceptions.Timeout:
+        return False, "Timeout lors de l'envoi de l'email"
+    except requests.exceptions.RequestException as e:
+        error_msg = f"Erreur de connexion: {str(e)}"
+        print(f"  ❌ {error_msg}")
+        return False, error_msg
+    except Exception as e:
+        error_msg = f"Erreur inattendue: {str(e)}"
+        print(f"  ❌ {error_msg}")
+        return False, error_msg
 
 def cleanup_expired_tokens():
     """Nettoyer les tokens expirés (plus de 1 heure)"""
@@ -369,59 +429,70 @@ def forgot_password():
         # Générer le lien de réinitialisation
         reset_url = url_for('reset_password', token=token, _external=True)
         
-        # Envoyer l'email si Flask-Mail est configuré
-        if mail:
+        # Contenu HTML de l'email
+        email_html = f'''
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 0;">
+            <div style="max-width: 600px; margin: 20px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #FF006E; margin: 0;">⚡ FRAUD GUARD</h1>
+                </div>
+                <h2 style="color: #333; margin-top: 0;">Réinitialisation de mot de passe</h2>
+                <p>Bonjour,</p>
+                <p>Vous avez demandé à réinitialiser votre mot de passe pour votre compte FraudGuard AI.</p>
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_url}" style="background: #FF006E; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Réinitialiser mon mot de passe</a>
+                </p>
+                <p>Ou copiez ce lien dans votre navigateur:</p>
+                <p style="word-break: break-all; color: #666; background: #f9f9f9; padding: 10px; border-radius: 5px; font-size: 12px;">{reset_url}</p>
+                <p><strong style="color: #FF006E;">⚠️ Ce lien expire dans 1 heure.</strong></p>
+                <p>Si vous n'avez pas demandé cette réinitialisation, ignorez cet email. Votre mot de passe ne sera pas modifié.</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="color: #999; font-size: 12px; margin: 0;">Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+                <p style="color: #999; font-size: 12px; margin: 5px 0 0 0;">© 2025 FraudGuard AI - Tous droits réservés</p>
+            </div>
+        </body>
+        </html>
+        '''
+        
+        email_subject = 'Réinitialisation de votre mot de passe - FraudGuard AI'
+        email_sent = False
+        
+        # Essayer d'abord l'API Brevo (plus fiable sur Render)
+        if BREVO_API_KEY:
+            success, message = send_email_brevo_api(email, email_subject, email_html)
+            if success:
+                print(f"  ✅ Email de réinitialisation envoyé via Brevo API à {email}")
+                flash('Un lien de réinitialisation a été envoyé à votre adresse email.', 'success')
+                email_sent = True
+            else:
+                print(f"  ⚠️  Échec envoi via Brevo API: {message}")
+                # Continuer pour essayer SMTP en fallback
+        
+        # Fallback: Essayer SMTP si Brevo API a échoué ou n'est pas configuré
+        if not email_sent and mail:
             try:
                 msg = Message(
-                    subject='Réinitialisation de votre mot de passe - FraudGuard AI',
+                    subject=email_subject,
                     recipients=[email],
-                    html=f'''
-                    <html>
-                    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 0;">
-                        <div style="max-width: 600px; margin: 20px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="text-align: center; margin-bottom: 30px;">
-                                <h1 style="color: #FF006E; margin: 0;">⚡ FRAUD GUARD</h1>
-                            </div>
-                            <h2 style="color: #333; margin-top: 0;">Réinitialisation de mot de passe</h2>
-                            <p>Bonjour,</p>
-                            <p>Vous avez demandé à réinitialiser votre mot de passe pour votre compte FraudGuard AI.</p>
-                            <p style="text-align: center; margin: 30px 0;">
-                                <a href="{reset_url}" style="background: #FF006E; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Réinitialiser mon mot de passe</a>
-                            </p>
-                            <p>Ou copiez ce lien dans votre navigateur:</p>
-                            <p style="word-break: break-all; color: #666; background: #f9f9f9; padding: 10px; border-radius: 5px; font-size: 12px;">{reset_url}</p>
-                            <p><strong style="color: #FF006E;">⚠️ Ce lien expire dans 1 heure.</strong></p>
-                            <p>Si vous n'avez pas demandé cette réinitialisation, ignorez cet email. Votre mot de passe ne sera pas modifié.</p>
-                            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-                            <p style="color: #999; font-size: 12px; margin: 0;">Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
-                            <p style="color: #999; font-size: 12px; margin: 5px 0 0 0;">© 2025 FraudGuard AI - Tous droits réservés</p>
-                        </div>
-                    </body>
-                    </html>
-                    '''
+                    html=email_html
                 )
-                # Envoi avec timeout explicite
-                socket.setdefaulttimeout(30)  # Timeout de 30 secondes
+                socket.setdefaulttimeout(30)
                 mail.send(msg)
-                print(f"  ✅ Email de réinitialisation envoyé à {email}")
+                print(f"  ✅ Email de réinitialisation envoyé via SMTP à {email}")
                 flash('Un lien de réinitialisation a été envoyé à votre adresse email.', 'success')
+                email_sent = True
             except socket.timeout:
                 error_msg = "Timeout de connexion SMTP. Le serveur n'a pas répondu dans les 30 secondes."
                 print(f"  ❌ Timeout SMTP pour {email}")
-                flash('Erreur: Timeout de connexion au serveur email. Veuillez réessayer plus tard.', 'danger')
-                flash(f'Lien de réinitialisation (mode développement): {reset_url}', 'info')
             except Exception as e:
-                # En cas d'erreur d'envoi, afficher le lien pour le développement
                 error_msg = str(e)
-                print(f"  ❌ Erreur lors de l'envoi de l'email à {email}: {error_msg}")
-                import traceback
-                traceback.print_exc()
-                flash(f'Erreur lors de l\'envoi de l\'email: {error_msg}', 'danger')
-                flash(f'Lien de réinitialisation (mode développement): {reset_url}', 'info')
-        else:
-            # Mode développement: afficher le lien dans un message flash
-            flash(f'Lien de réinitialisation généré (mode développement). En production, un email serait envoyé à {email}.', 'info')
-            flash(f'Lien: {reset_url}', 'info')
+                print(f"  ❌ Erreur SMTP pour {email}: {error_msg}")
+        
+        # Si aucun envoi n'a réussi, afficher le lien en mode développement
+        if not email_sent:
+            flash('Erreur lors de l\'envoi de l\'email. Le lien de réinitialisation est affiché ci-dessous.', 'warning')
+            flash(f'Lien de réinitialisation: {reset_url}', 'info')
         
         return render_template('forgot_password.html')
     
