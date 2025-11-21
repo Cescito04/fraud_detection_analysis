@@ -1,5 +1,11 @@
 # User database
 users.json
+reset_tokens.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

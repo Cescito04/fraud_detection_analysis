@@ -5,6 +5,8 @@ Version optimisée et simplifiée
 """
 
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, flash
+from flask_mail import Mail, Message
+from dotenv import load_dotenv
 import joblib
 import pandas as pd
 import numpy as np
@@ -18,9 +20,37 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import io
 import secrets
 
+# Charger les variables d'environnement depuis .env
+load_dotenv()
+
 # Initialisation de l'application Flask
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
+# Configuration Flask-Mail pour l'envoi d'emails
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
+app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'false').lower() in ['true', 'on', '1']
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@fraudguard.ai')
+app.config['MAIL_DEFAULT_SENDER_NAME'] = 'FraudGuard AI'
+
+# Initialiser Flask-Mail (sera None si non configuré)
+mail = None
+if app.config['MAIL_USERNAME'] and app.config['MAIL_PASSWORD']:
+    try:
+        mail = Mail(app)
+        print("  ✅ Flask-Mail configuré et prêt")
+        print(f"     Serveur: {app.config['MAIL_SERVER']}:{app.config['MAIL_PORT']}")
+        print(f"     Sender: {app.config['MAIL_DEFAULT_SENDER']}")
+    except Exception as e:
+        print(f"  ⚠️  Erreur configuration Flask-Mail: {e}")
+        print("  💡 L'envoi d'email sera désactivé. Configurez les variables d'environnement pour l'activer.")
+else:
+    print("  ⚠️  Flask-Mail non configuré (variables MAIL_USERNAME/MAIL_PASSWORD manquantes)")
+    print("  💡 Mode développement: les liens seront affichés dans les messages flash")
 
 # Variables globales
 model = None
@@ -30,6 +60,7 @@ model_load_error = None
 
 # Chemin du fichier de base de données utilisateurs
 USERS_DB_FILE = 'users.json'
+RESET_TOKENS_FILE = 'reset_tokens.json'
 
 def load_users():
     """Charger les utilisateurs depuis le fichier JSON"""
@@ -46,11 +77,51 @@ def save_users(users):
     with open(USERS_DB_FILE, 'w', encoding='utf-8') as f:
         json.dump(users, f, indent=2, ensure_ascii=False)
 
+def load_reset_tokens():
+    """Charger les tokens de réinitialisation depuis le fichier JSON"""
+    if os.path.exists(RESET_TOKENS_FILE):
+        try:
+            with open(RESET_TOKENS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_reset_tokens(tokens):
+    """Sauvegarder les tokens de réinitialisation dans le fichier JSON"""
+    with open(RESET_TOKENS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(tokens, f, indent=2, ensure_ascii=False)
+
+def generate_reset_token():
+    """Générer un token unique pour la réinitialisation"""
+    return secrets.token_urlsafe(32)
+
+def cleanup_expired_tokens():
+    """Nettoyer les tokens expirés (plus de 1 heure)"""
+    tokens = load_reset_tokens()
+    current_time = time.time()
+    expired_tokens = []
+    
+    for token, data in tokens.items():
+        if current_time - data['created_at'] > 3600:  # 1 heure
+            expired_tokens.append(token)
+    
+    for token in expired_tokens:
+        del tokens[token]
+    
+    if expired_tokens:
+        save_reset_tokens(tokens)
+
 def init_users_db():
     """Initialiser la base de données utilisateurs si elle n'existe pas"""
     if not os.path.exists(USERS_DB_FILE):
         save_users({})
         print("  ✅ Base de données utilisateurs initialisée")
+    
+    # Initialiser le fichier de tokens si nécessaire
+    if not os.path.exists(RESET_TOKENS_FILE):
+        save_reset_tokens({})
+        print("  ✅ Base de données tokens initialisée")
 
 def is_authenticated():
     """Vérifier si l'utilisateur est authentifié"""
@@ -259,6 +330,152 @@ def logout():
     session.clear()
     flash('Vous avez été déconnecté avec succès', 'info')
     return redirect(url_for('login'))
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Page de mot de passe oublié"""
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        
+        if not email or '@' not in email:
+            flash('Veuillez entrer un email valide', 'danger')
+            return render_template('forgot_password.html')
+        
+        users = load_users()
+        
+        if email not in users:
+            # Pour la sécurité, on ne révèle pas si l'email existe ou non
+            flash('Si cet email existe dans notre système, un lien de réinitialisation a été envoyé.', 'info')
+            return render_template('forgot_password.html')
+        
+        # Générer un token de réinitialisation
+        token = generate_reset_token()
+        tokens = load_reset_tokens()
+        
+        # Nettoyer les tokens expirés
+        cleanup_expired_tokens()
+        
+        # Sauvegarder le token
+        tokens[token] = {
+            'email': email,
+            'created_at': time.time()
+        }
+        save_reset_tokens(tokens)
+        
+        # Générer le lien de réinitialisation
+        reset_url = url_for('reset_password', token=token, _external=True)
+        
+        # Envoyer l'email si Flask-Mail est configuré
+        if mail:
+            try:
+                msg = Message(
+                    subject='Réinitialisation de votre mot de passe - FraudGuard AI',
+                    recipients=[email],
+                    html=f'''
+                    <html>
+                    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 0;">
+                        <div style="max-width: 600px; margin: 20px auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <div style="text-align: center; margin-bottom: 30px;">
+                                <h1 style="color: #FF006E; margin: 0;">⚡ FRAUD GUARD</h1>
+                            </div>
+                            <h2 style="color: #333; margin-top: 0;">Réinitialisation de mot de passe</h2>
+                            <p>Bonjour,</p>
+                            <p>Vous avez demandé à réinitialiser votre mot de passe pour votre compte FraudGuard AI.</p>
+                            <p style="text-align: center; margin: 30px 0;">
+                                <a href="{reset_url}" style="background: #FF006E; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Réinitialiser mon mot de passe</a>
+                            </p>
+                            <p>Ou copiez ce lien dans votre navigateur:</p>
+                            <p style="word-break: break-all; color: #666; background: #f9f9f9; padding: 10px; border-radius: 5px; font-size: 12px;">{reset_url}</p>
+                            <p><strong style="color: #FF006E;">⚠️ Ce lien expire dans 1 heure.</strong></p>
+                            <p>Si vous n'avez pas demandé cette réinitialisation, ignorez cet email. Votre mot de passe ne sera pas modifié.</p>
+                            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                            <p style="color: #999; font-size: 12px; margin: 0;">Cet email a été envoyé automatiquement, merci de ne pas y répondre.</p>
+                            <p style="color: #999; font-size: 12px; margin: 5px 0 0 0;">© 2025 FraudGuard AI - Tous droits réservés</p>
+                        </div>
+                    </body>
+                    </html>
+                    '''
+                )
+                mail.send(msg)
+                print(f"  ✅ Email de réinitialisation envoyé à {email}")
+                flash('Un lien de réinitialisation a été envoyé à votre adresse email.', 'success')
+            except Exception as e:
+                # En cas d'erreur d'envoi, afficher le lien pour le développement
+                error_msg = str(e)
+                print(f"  ❌ Erreur lors de l'envoi de l'email à {email}: {error_msg}")
+                import traceback
+                traceback.print_exc()
+                flash(f'Erreur lors de l\'envoi de l\'email: {error_msg}', 'danger')
+                flash(f'Lien de réinitialisation (mode développement): {reset_url}', 'info')
+        else:
+            # Mode développement: afficher le lien dans un message flash
+            flash(f'Lien de réinitialisation généré (mode développement). En production, un email serait envoyé à {email}.', 'info')
+            flash(f'Lien: {reset_url}', 'info')
+        
+        return render_template('forgot_password.html')
+    
+    return render_template('forgot_password.html')
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Page de réinitialisation du mot de passe"""
+    tokens = load_reset_tokens()
+    
+    # Vérifier si le token existe et n'est pas expiré
+    if token not in tokens:
+        flash('Lien de réinitialisation invalide ou expiré', 'danger')
+        return redirect(url_for('forgot_password'))
+    
+    token_data = tokens[token]
+    current_time = time.time()
+    
+    # Vérifier l'expiration (1 heure)
+    if current_time - token_data['created_at'] > 3600:
+        del tokens[token]
+        save_reset_tokens(tokens)
+        flash('Le lien de réinitialisation a expiré. Veuillez en demander un nouveau.', 'danger')
+        return redirect(url_for('forgot_password'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        # Validation
+        errors = []
+        
+        if len(password) < 8:
+            errors.append('Le mot de passe doit contenir au moins 8 caractères')
+        
+        if not any(c.isupper() for c in password):
+            errors.append('Le mot de passe doit contenir au moins une majuscule')
+        
+        if not any(c.isdigit() for c in password):
+            errors.append('Le mot de passe doit contenir au moins un chiffre')
+        
+        if password != confirm_password:
+            errors.append('Les mots de passe ne correspondent pas')
+        
+        if errors:
+            for error in errors:
+                flash(error, 'danger')
+            return render_template('reset_password.html', token=token)
+        
+        # Mettre à jour le mot de passe
+        users = load_users()
+        email = token_data['email']
+        
+        if email in users:
+            users[email]['password'] = generate_password_hash(password)
+            save_users(users)
+        
+        # Supprimer le token utilisé
+        del tokens[token]
+        save_reset_tokens(tokens)
+        
+        flash('Votre mot de passe a été réinitialisé avec succès. Vous pouvez maintenant vous connecter.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('reset_password.html', token=token)
 
 @app.route('/', methods=['GET'])
 @require_auth

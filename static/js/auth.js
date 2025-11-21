@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeAuthForms() {
     const loginForm = document.getElementById('loginForm');
     const registerForm = document.getElementById('registerForm');
+    const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
     
     if (loginForm) {
         loginForm.addEventListener('submit', handleLoginSubmit);
@@ -17,6 +19,16 @@ function initializeAuthForms() {
     if (registerForm) {
         registerForm.addEventListener('submit', handleRegisterSubmit);
         setupFormValidation(registerForm);
+    }
+    
+    if (forgotPasswordForm) {
+        forgotPasswordForm.addEventListener('submit', handleForgotPasswordSubmit);
+        setupFormValidation(forgotPasswordForm);
+    }
+    
+    if (resetPasswordForm) {
+        resetPasswordForm.addEventListener('submit', handleResetPasswordSubmit);
+        setupFormValidation(resetPasswordForm);
     }
 }
 
@@ -223,6 +235,67 @@ function handleRegisterSubmit(event) {
     const passwordInput = form.querySelector('#password');
     const confirmPasswordInput = form.querySelector('#confirm_password');
     
+    if (passwordInput && confirmPasswordInput) {
+        if (!validatePasswordMatch(passwordInput, confirmPasswordInput)) {
+            isValid = false;
+        }
+    }
+    
+    if (!isValid) {
+        showNotification('Veuillez corriger les erreurs dans le formulaire', 'error');
+        setButtonLoading(submitBtn, false);
+        return;
+    }
+    
+    // Show loading state
+    setButtonLoading(submitBtn, true);
+    
+    // Submit form
+    form.submit();
+}
+
+function handleForgotPasswordSubmit(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const submitBtn = form.querySelector('#submitBtn');
+    
+    // Validate email
+    const emailInput = form.querySelector('#email');
+    if (!validateField(emailInput)) {
+        showNotification('Veuillez entrer un email valide', 'error');
+        setButtonLoading(submitBtn, false);
+        return;
+    }
+    
+    // Show loading state
+    setButtonLoading(submitBtn, true);
+    
+    // Submit form
+    form.submit();
+}
+
+function handleResetPasswordSubmit(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const submitBtn = form.querySelector('#submitBtn');
+    
+    // Validate all fields
+    const passwordInput = form.querySelector('#password');
+    const confirmPasswordInput = form.querySelector('#confirm_password');
+    
+    let isValid = true;
+    
+    if (!validateField(passwordInput)) {
+        isValid = false;
+    }
+    
+    if (!validateField(confirmPasswordInput)) {
+        isValid = false;
+    }
+    
+    // Validate password match
     if (passwordInput && confirmPasswordInput) {
         if (!validatePasswordMatch(passwordInput, confirmPasswordInput)) {
             isValid = false;
